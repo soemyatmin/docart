@@ -12,6 +12,11 @@ on:
           - plan
           - apply
           - destroy
+      confirm_destroy:
+        description: "Confirm Terraform Destroy"
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   id-token: write
@@ -51,11 +56,11 @@ jobs:
         run: terraform plan -input=false
 
       - name: Terraform Apply
-        if: ${{ inputs.action == 'apply' }}
+        if: ${{ github.ref == 'refs/heads/master' && inputs.action == 'apply' }}
         working-directory: ./terraform
         run: terraform apply -auto-approve -input=false
 
       - name: Terraform Destroy
-        if: ${{ inputs.action == 'destroy' }}
+        if: ${{ github.ref == 'refs/heads/master' && inputs.action == 'destroy' && inputs.confirm_destroy == true }}
         working-directory: ./terraform
         run: terraform destroy -auto-approve -input=false
