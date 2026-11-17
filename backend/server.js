@@ -93,6 +93,10 @@ app.delete("/shopping/:id", (req, res) => {
   res.status(204).send();
 });
 
+app.get("/version", (req, res) => {
+  res.json({ version: "v3" });
+});
+
 app.listen(3000, () => {
   console.log("Server running on port 3000");
 });
