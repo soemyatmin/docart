@@ -1,0 +1,18 @@
+# Node.js
+node_modules/
+.env
+.env.*
+
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tfvars
+*.tfvars.json
+crash.log
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+.vscode/
