@@ -53,8 +53,8 @@ jobs:
           ECR_REPOSITORY: eks-study-api
           IMAGE_TAG: ${{ github.sha }}
         run: |
+          sed -i "s|image: .*eks-study-api:.*|image: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG|" kubernetes/backend-deployment.yaml
           kubectl apply -f kubernetes/backend-deployment.yaml
           kubectl apply -f kubernetes/backend-service.yaml
           kubectl apply -f kubernetes/backend-hpa.yaml
-          kubectl set image deployment/my-lists-api my-lists-api=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           kubectl rollout status deployment/my-lists-api --timeout=180s
