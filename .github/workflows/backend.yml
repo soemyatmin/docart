@@ -1,6 +1,13 @@
 name: Backend 
 
 on:
+  push:
+    branches:
+      - master
+    paths:
+      - "backend/**"
+      - "kubernetes/**"
+      - ".github/workflows/backend.yml"
   workflow_dispatch:
 
 permissions:
