@@ -2,6 +2,16 @@ name: Terraform
 
 on:
   workflow_dispatch:
+    inputs:
+      action:
+        description: "Terraform action"
+        required: true
+        type: choice
+        default: plan
+        options:
+          - plan
+          - apply
+          - destroy
 
 permissions:
   id-token: write
@@ -23,3 +33,29 @@ jobs:
 
       - name: Verify AWS Identity
         run: aws sts get-caller-identity
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        working-directory: ./terraform
+        run: terraform init -input=false
+
+      - name: Terraform Validate
+        working-directory: ./terraform
+        run: terraform validate
+
+      - name: Terraform Plan
+        if: ${{ inputs.action == 'plan' }}
+        working-directory: ./terraform
+        run: terraform plan -input=false
+
+      - name: Terraform Apply
+        if: ${{ inputs.action == 'apply' }}
+        working-directory: ./terraform
+        run: terraform apply -auto-approve -input=false
+
+      - name: Terraform Destroy
+        if: ${{ inputs.action == 'destroy' }}
+        working-directory: ./terraform
+        run: terraform destroy -auto-approve -input=false
