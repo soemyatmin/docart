@@ -1,5 +1,20 @@
 const express = require("express");
 const app = express();
+const db = require("./db");
+
+app.use((req, res, next) => {
+  const start = Date.now();
+
+  res.on("finish", () => {
+    const duration = Date.now() - start;
+
+    console.log(
+      `${req.method} ${req.originalUrl} ${res.statusCode} ${duration}ms`
+    );
+  });
+
+  next();
+});
 
 app.use(express.json());
 
@@ -9,88 +24,170 @@ app.get("/health", (req, res) => {
 
 let todos = [];
 
-app.get("/todos", (req, res) => {
-  res.json(todos);
+app.get("/todos", async (req, res) => {
+  try {
+    const result = await db.query("SELECT * FROM todos ORDER BY id");
+    res.json(result.rows);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Database error" });
+  }
 });
 
-app.post("/todos", (req, res) => {
-  const todo = {
-    id: Date.now(),
-    title: req.body.title,
-    completed: false
-  };
+app.post("/todos", async (req, res) => {
+  const { title } = req.body;
 
-  todos.push(todo);
-  res.status(201).json(todo);
-});
-
-app.patch("/todos/:id", (req, res) => {
-  const todo = todos.find(
-    t => t.id === Number(req.params.id)
-  );
-
-  if (!todo) {
-    return res.status(404).json({ error: "Todo not found" });
+  if (typeof title !== "string" || !title.trim()) {
+    return res.status(400).json({ error: "Title is required" });
   }
 
-  todo.completed = true;
-  res.json(todo);
+  try {
+    const result = await db.query(
+      "INSERT INTO todos (title) VALUES ($1) RETURNING *",
+      [title.trim()]
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Database error" });
+  }
 });
 
-app.delete("/todos/:id", (req, res) => {
-  const index = todos.findIndex(
-    t => t.id === Number(req.params.id)
-  );
+app.put("/todos/:id", async (req, res) => {
+  const { title, completed } = req.body;
+  const id = Number(req.params.id);
 
-  if (index === -1) {
-    return res.status(404).json({ error: "Todo not found" });
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: "Invalid Todo ID" });
   }
 
-  todos.splice(index, 1);
-  res.status(204).send();
+  try {
+    const result = await db.query(
+      `UPDATE todos
+       SET title = COALESCE($1, title),
+           completed = COALESCE($2, completed)
+       WHERE id = $3
+       RETURNING *`,
+      [title ?? null, completed ?? null, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Todo not found" });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
+app.delete("/todos/:id", async (req, res) => {
+  const id = Number(req.params.id);
+
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: "Invalid Todo ID" });
+  }
+
+  try {
+    const result = await db.query(
+      "DELETE FROM todos WHERE id = $1 RETURNING id",
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Todo not found" });
+    }
+
+    res.status(204).send();
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Database error" });
+  }
 });
 
 let shopping = [];
 
-app.get("/shopping", (req, res) => {
-  res.json(shopping);
+app.get("/shopping", async (req, res) => {
+  try {
+    const result = await db.query(
+      "SELECT * FROM shopping ORDER BY id"
+    );
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Database error" });
+  }
 });
 
-app.post("/shopping", (req, res) => {
-  const item = {
-    id: Date.now(),
-    title: req.body.title,
-    completed: false
-  };
+app.post("/shopping", async (req, res) => {
+  const { title } = req.body;
 
-  shopping.push(item);
-  res.status(201).json(item);
-});
-
-app.patch("/shopping/:id", (req, res) => {
-  const item = shopping.find(
-    i => i.id === Number(req.params.id)
-  );
-
-  if (!item) {
-    return res.status(404).json({ error: "Item not found" });
+  if (typeof title !== "string" || !title.trim()) {
+    return res.status(400).json({ error: "Title is required" });
   }
 
-  item.completed = true;
-  res.json(item);
+  try {
+    const result = await db.query(
+      "INSERT INTO shopping (title) VALUES ($1) RETURNING *",
+      [title.trim()]
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Database error" });
+  }
 });
 
-app.delete("/shopping/:id", (req, res) => {
-  const index = shopping.findIndex(
-    item => item.id === Number(req.params.id)
-  );
+app.patch("/shopping/:id", async (req, res) => {
+  const id = Number(req.params.id);
 
-  if (index === -1) {
-    return res.status(404).json({ error: "Item not found" });
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: "Invalid item ID" });
   }
 
-  shopping.splice(index, 1);
-  res.status(204).send();
+  try {
+    const result = await db.query(
+      "UPDATE shopping SET completed = TRUE WHERE id = $1 RETURNING *",
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Item not found" });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
+app.delete("/shopping/:id", async (req, res) => {
+  const id = Number(req.params.id);
+
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: "Invalid item ID" });
+  }
+
+  try {
+    const result = await db.query(
+      "DELETE FROM shopping WHERE id = $1 RETURNING id",
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Item not found" });
+    }
+
+    res.status(204).send();
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Database error" });
+  }
 });
 
 app.get("/version", (req, res) => {
