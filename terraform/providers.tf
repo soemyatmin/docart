@@ -6,9 +6,9 @@ terraform {
     }
   }
     backend "s3" {
-    bucket       = "docart-soemyatmin-it-tfstate"
+    bucket       = "docart-eks-learning-tfstate"
     key          = "eks-study/terraform.tfstate"
-    region       = "ap-northeast-1"
+    region       = "ap-southeast-2"
     encrypt      = true
     use_lockfile = true
   }
